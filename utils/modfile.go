@@ -12,10 +12,147 @@ import (
 	"path/filepath"
 )
 
+/* phylosophy: gli input a queste funzioni devono essere tutti giusti! è nel file della flag che controlli se gli argumment delle flag sono
+giusti */
+
+/* This function is a copy of the previuous function but you use StartLabel and EndLabel instead of line as a string */
+func ChangeFileLabel(filename string, startLabel string, endLabel string, action string, dryrun bool){
+	
+	// Open the file
+    file, err := os.Open(filename)
+    if err != nil {
+        log.Fatalf("failed to open file: %s", err)
+    }
+    // Ensure file is closed at the end
+    defer file.Close()
+
+	char := selectCommentChars(filename)
+
+	switch dryrun {
+	case true:
+		// Create a new scanner for the file
+    	scanner := bufio.NewScanner(file)
+		switch action{
+		case "comment":
+			inSection := false
+    		for scanner.Scan() {
+				lineContent := scanner.Text()
+				// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
+				if strings.Contains(lineContent, startLabel){
+					inSection = true
+				}
+				if inSection {
+					fmt.Println(lineContent + " " + "->" + " " + Comment(lineContent, char))
+				}
+				if strings.Contains(lineContent, endLabel){
+					inSection = false
+				}
+    		}
+			fmt.Println("\n")
+			// Check for scanning errors
+    		if err := scanner.Err(); err != nil {
+        		log.Fatalf("error reading file: %s", err)
+    		}
+		case "uncomment":
+			inSection := false
+    		for scanner.Scan() {
+				lineContent := scanner.Text()
+				// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
+				if strings.Contains(lineContent, startLabel){
+					inSection = true
+				}
+				if inSection {
+					fmt.Println(lineContent + " " + "->" + " " + Uncomment(lineContent, char))
+				}
+				if strings.Contains(lineContent, endLabel){
+					inSection = false
+				}
+    		}
+			fmt.Println("\n")
+			// Check for scanning errors
+    		if err := scanner.Err(); err != nil {
+        		log.Fatalf("error reading file: %s", err)
+    		}
+		case "toggle":
+			inSection := false
+    		for scanner.Scan() {
+				lineContent := scanner.Text()
+				// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
+				if strings.Contains(lineContent, startLabel){
+					inSection = true
+				}
+				if inSection {
+					fmt.Println(lineContent + " " + "->" + " " + ToggleComments(lineContent, char))
+				}
+				if strings.Contains(lineContent, endLabel){
+					inSection = false
+				}
+    		}
+			fmt.Println("\n")
+			// Check for scanning errors
+    		if err := scanner.Err(); err != nil {
+        		log.Fatalf("error reading file: %s", err)
+    		}
+		}
+	case false:
+		// Create a backup of the original file
+		backupFilename := filename + ".bak"
+		createBackup(filename, backupFilename)
+
+		// Create a temporary file
+		tmpFilename := filename + ".tmp"
+		tmpFile, err := os.Create(tmpFilename)
+		if err != nil {
+			restoreBackup(filename, backupFilename)
+			log.Fatalf("Errore: %v", err)
+		}
+		defer tmpFile.Close()
+
+		_, err = file.Seek(0, io.SeekStart)
+		if err != nil {
+			restoreBackup(filename, backupFilename)
+			tmpFile.Close()
+			os.Remove(tmpFilename)
+			log.Fatalf("Errore: %v", err)
+		}
+
+		err = writeChangesLabel(file, tmpFile, startLabel, endLabel, action, char)
+
+		if err != nil {
+			restoreBackup(filename, backupFilename)
+			tmpFile.Close()
+			os.Remove(tmpFilename)
+			log.Fatalf("Errore: %v", err)
+		}
+
+		if err := file.Close(); err != nil {
+			restoreBackup(filename, backupFilename)
+			tmpFile.Close()
+			os.Remove(tmpFilename)
+			log.Fatalf("Errore: %v", err)
+		}
+
+		// Close the temporary file before renaming
+		if err := tmpFile.Close(); err != nil {
+			os.Remove(tmpFilename)
+			log.Fatalf("Errore: %v", err)
+		}
+
+		// Rename temporary file to original file
+		if err := os.Rename(tmpFilename, filename); err != nil {
+			restoreBackup(filename, backupFilename)
+			log.Fatalf("Errore: %v", err)
+		}
+
+		// Remove backup file after successful processing
+		os.Remove(backupFilename)
+	}
+}
+
 /* Take in input the name of a file in the  current folder, a string that contains info about lines to be commented/uncommented, the action to do (comment,
 uncomment or toggle, if no argument is passed to the flag -a the defualt will be toggle) and dryrun. If true the modifications will be displayed on the
 terminal but will not be saved on the file. Otherwise the files will be modified */
-func ChangeFile(filename string, line string, action string, dryrun bool) {
+func ChangeFileLine(filename string, line string, action string, dryrun bool) {
 
     // Open the file
     file, err := os.Open(filename)
@@ -106,7 +243,7 @@ func ChangeFile(filename string, line string, action string, dryrun bool) {
 			log.Fatalf("Errore: %v", err)
 		}
 
-		err = writeChanges(file, tmpFile, start, end, action, char)
+		err = writeChangesLine(file, tmpFile, start, end, action, char)
 
 		if err != nil {
 			restoreBackup(filename, backupFilename)
@@ -190,7 +327,7 @@ func FindLines(lineStr string) (startLine int, endLine int) {
 	}
 }
 
-func writeChanges(inputFile *os.File, outputFile *os.File, start int, end int, action string, char string) error {
+func writeChangesLine(inputFile *os.File, outputFile *os.File, start int, end int, action string, char string) error {
 	scanner := bufio.NewScanner(inputFile)
 	writer := bufio.NewWriter(outputFile)
 	
@@ -247,6 +384,84 @@ func writeChanges(inputFile *os.File, outputFile *os.File, start int, end int, a
 		}
 		if end > currentLine {
 			return errors.New("line number is out of range")
+		}
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+		return writer.Flush()
+	}
+	return errors.New("Action provided is not valid")
+}
+
+func writeChangesLabel(inputFile *os.File, outputFile *os.File, startLabel string, endLabel string, action string, char string) error {
+	scanner := bufio.NewScanner(inputFile)
+	writer := bufio.NewWriter(outputFile)
+	
+	switch action{
+	case "comment":
+		inSection := false
+		for scanner.Scan() {
+			lineContent := scanner.Text()
+			// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
+			if strings.Contains(lineContent, startLabel){
+				inSection = true
+			}
+			if inSection {
+				lineContent = Comment(lineContent, char)
+			}
+			if strings.Contains(lineContent, endLabel){
+				inSection = false
+			}
+
+			if _, err := writer.WriteString(lineContent + "\n"); err != nil {
+				return err
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+		return writer.Flush()
+	case "uncomment":
+		inSection := false
+		for scanner.Scan() {
+			lineContent := scanner.Text()
+			// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
+			if strings.Contains(lineContent, startLabel){
+				inSection = true
+			}
+			if inSection {
+				lineContent = Uncomment(lineContent, char)
+			}
+			if strings.Contains(lineContent, endLabel){
+				inSection = false
+			}
+
+			if _, err := writer.WriteString(lineContent + "\n"); err != nil {
+				return err
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+		return writer.Flush()
+	case "toggle":
+		inSection := false
+		for scanner.Scan() {
+			lineContent := scanner.Text()
+			// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
+			if strings.Contains(lineContent, startLabel){
+				inSection = true
+			}
+			if inSection {
+				lineContent = ToggleComments(lineContent, char)
+			}
+			if strings.Contains(lineContent, endLabel){
+				inSection = false
+			}
+
+			if _, err := writer.WriteString(lineContent + "\n"); err != nil {
+				return err
+			}
 		}
 		if err := scanner.Err(); err != nil {
 			return err

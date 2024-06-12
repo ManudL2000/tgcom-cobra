@@ -15,6 +15,8 @@ var FileToRead string
 var LineToRead string
 var DryRun bool
 var ActionToDo string
+var StartLabel string
+var EndLabel string
 
 /* rootCmd is the command tgcom. "Use" is the name of the command, "Short" is a brief description of the command, "Long
 is a longer description of the command, Run is the action that must be executed when command tgcom is called" */
@@ -43,7 +45,7 @@ var rootCmd = &cobra.Command{
 		}
 		/* If some arguments have been passed to -f flag then process the arguments of the flag with
 		the following function */
-		UnpackFile(cmd)
+		ReadFlags(cmd)
 	},
 }
 
@@ -67,6 +69,8 @@ func init() {
     rootCmd.PersistentFlags().StringVarP(&LineToRead, "line", "l", "", "pass argument to line flag and will print the line specified")
 	rootCmd.PersistentFlags().BoolVarP(&DryRun, "dry-run", "d", false, "pass argument to dry-run flag and will print the result")
 	rootCmd.PersistentFlags().StringVarP(&ActionToDo, "action", "a", "toggle", "pass argument to action to comment/uncomment/toggle some lines")
+	rootCmd.PersistentFlags().StringVarP(&StartLabel, "start-label", "s", "", "pass argument to start-label to modify lines after start-label")
+	rootCmd.PersistentFlags().StringVarP(&EndLabel, "end-label", "e", "", "pass argument to end-label to modify lines after end-label")
 }
 
 /* function to see if no flag is given */
@@ -83,27 +87,49 @@ func noFlagsGiven(cmd *cobra.Command) bool {
 /* analyze the argument of -f. If more files are given (e.g -f file1:line1,file2:line2,file3:line3) then split each
 content and pass each pair of file and corresponding line to the ChangeFile() function. Otherwise pass directly content
 of -f and -l flags. */
-func UnpackFile(cmd *cobra.Command){
+/* TODO: make this function more pretty */
+
+func ReadFlags(cmd *cobra.Command){
 	if strings.Contains(FileToRead, ","){
 		if cmd.Flags().Changed("line"){
 			fmt.Println("Warning: when passed multiple file to flag -f don't use -l flag")
 		}
-		fileInfo := strings.Split(FileToRead, ",")
-		for i:=0; i<len(fileInfo); i++ {
-			if strings.Contains(fileInfo[i], ":"){
-				parts := strings.Split(fileInfo[i], ":")
-				if len(parts) != 2 {
+		// TODO: add the possibility of adding labels (same start and same end label) for all the files
+		// two possibility: if both start and end label are given then there should be no lines, otherwise
+		// you should procede as before
+		if cmd.Flags().Changed("start-label") && cmd.Flags().Changed("end-label"){
+			fileInfo := strings.Split(FileToRead, ",")
+			for i:=0; i<len(fileInfo); i++ {
+					utils.ChangeFileLabel(fileInfo[i], StartLabel, EndLabel,ActionToDo, DryRun)
+			}
+		} else {
+			fileInfo := strings.Split(FileToRead, ",")
+			for i:=0; i<len(fileInfo); i++ {
+				if strings.Contains(fileInfo[i], ":"){
+					parts := strings.Split(fileInfo[i], ":")
+					if len(parts) != 2 {
+						log.Fatalf("invalid syntax. Use 'FileToRead:lines'")
+					}
+					utils.ChangeFileLine(parts[0], parts[1], ActionToDo, DryRun)
+				} else {
+					// HERE: insert code to say that is possible that start-end labels have been given
 					log.Fatalf("invalid syntax. Use 'FileToRead:lines'")
 				}
-				utils.ChangeFile(parts[0], parts[1], ActionToDo, DryRun)
-			} else {
-				log.Fatalf("invalid syntax. Use 'FileToRead:lines'")
 			}
 		}
 	} else {
-		utils.ChangeFile(FileToRead, LineToRead, ActionToDo, DryRun)
+		if cmd.Flags().Changed("line"){
+			utils.ChangeFileLine(FileToRead, LineToRead, ActionToDo, DryRun)
+		} else if cmd.Flags().Changed("start-label") && cmd.Flags().Changed("end-label"){
+			utils.ChangeFileLabel(FileToRead, StartLabel, EndLabel, ActionToDo, DryRun)
+		} else {
+			log.Fatalf("Not specified what you want to modify: add -l flag or -s and -e flags")
+		}
+		
 	}
 }
+
+/* the following function decide in which mode we add/remove comments: currently (12/06/2024) only two modes exists: passing lines */
 
 func customHelpFunc(cmd *cobra.Command, args []string) {
     fmt.Println("Help Message for Tgcom application")
