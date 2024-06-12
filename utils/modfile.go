@@ -38,14 +38,16 @@ func ChangeFileLabel(filename string, startLabel string, endLabel string, action
     		for scanner.Scan() {
 				lineContent := scanner.Text()
 				// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
-				if strings.Contains(lineContent, startLabel){
-					inSection = true
+				if strings.Contains(lineContent, endLabel){
+					inSection = false
 				}
+
 				if inSection {
 					fmt.Println(lineContent + " " + "->" + " " + Comment(lineContent, char))
 				}
-				if strings.Contains(lineContent, endLabel){
-					inSection = false
+
+				if strings.Contains(lineContent, startLabel){
+					inSection = true
 				}
     		}
 			fmt.Println("\n")
@@ -58,14 +60,16 @@ func ChangeFileLabel(filename string, startLabel string, endLabel string, action
     		for scanner.Scan() {
 				lineContent := scanner.Text()
 				// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
-				if strings.Contains(lineContent, startLabel){
-					inSection = true
+				if strings.Contains(lineContent, endLabel){
+					inSection = false
 				}
+
 				if inSection {
 					fmt.Println(lineContent + " " + "->" + " " + Uncomment(lineContent, char))
 				}
-				if strings.Contains(lineContent, endLabel){
-					inSection = false
+
+				if strings.Contains(lineContent, startLabel){
+					inSection = true
 				}
     		}
 			fmt.Println("\n")
@@ -78,14 +82,15 @@ func ChangeFileLabel(filename string, startLabel string, endLabel string, action
     		for scanner.Scan() {
 				lineContent := scanner.Text()
 				// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
-				if strings.Contains(lineContent, startLabel){
-					inSection = true
+				if strings.Contains(lineContent, endLabel){
+					inSection = false
 				}
+
 				if inSection {
 					fmt.Println(lineContent + " " + "->" + " " + ToggleComments(lineContent, char))
 				}
-				if strings.Contains(lineContent, endLabel){
-					inSection = false
+				if strings.Contains(lineContent, startLabel){
+					inSection = true
 				}
     		}
 			fmt.Println("\n")
@@ -403,14 +408,16 @@ func writeChangesLabel(inputFile *os.File, outputFile *os.File, startLabel strin
 		for scanner.Scan() {
 			lineContent := scanner.Text()
 			// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
-			if strings.Contains(lineContent, startLabel){
-				inSection = true
+			if strings.Contains(lineContent, endLabel){
+				inSection = false
 			}
+
 			if inSection {
 				lineContent = Comment(lineContent, char)
 			}
-			if strings.Contains(lineContent, endLabel){
-				inSection = false
+
+			if strings.Contains(lineContent, startLabel){
+				inSection = true
 			}
 
 			if _, err := writer.WriteString(lineContent + "\n"); err != nil {
@@ -426,14 +433,16 @@ func writeChangesLabel(inputFile *os.File, outputFile *os.File, startLabel strin
 		for scanner.Scan() {
 			lineContent := scanner.Text()
 			// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
-			if strings.Contains(lineContent, startLabel){
-				inSection = true
+			if strings.Contains(lineContent, endLabel){
+				inSection = false
 			}
+
 			if inSection {
 				lineContent = Uncomment(lineContent, char)
 			}
-			if strings.Contains(lineContent, endLabel){
-				inSection = false
+
+			if strings.Contains(lineContent, startLabel){
+				inSection = true
 			}
 
 			if _, err := writer.WriteString(lineContent + "\n"); err != nil {
@@ -449,14 +458,16 @@ func writeChangesLabel(inputFile *os.File, outputFile *os.File, startLabel strin
 		for scanner.Scan() {
 			lineContent := scanner.Text()
 			// HERE: if lineContent contain the start label, then fai currentLine++, se non contiene endLabel modifica
-			if strings.Contains(lineContent, startLabel){
-				inSection = true
+			if strings.Contains(lineContent, endLabel){
+				inSection = false
 			}
+
 			if inSection {
 				lineContent = ToggleComments(lineContent, char)
 			}
-			if strings.Contains(lineContent, endLabel){
-				inSection = false
+
+			if strings.Contains(lineContent, startLabel){
+				inSection = true
 			}
 
 			if _, err := writer.WriteString(lineContent + "\n"); err != nil {
