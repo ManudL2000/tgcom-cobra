@@ -257,11 +257,35 @@ func writeChanges(inputFile *os.File, outputFile *os.File, start int, end int, a
 }
 
 func Comment(line string, char string) string {
+	// just for html
+	if char == "<!-- -->" {
+		return "<!--" + " " + line + " " + "-->"
+	}
 	return char + " " + line
 }
 
 func Uncomment(line string, char string) string {
 	trimmedLine := strings.TrimSpace(line)
+
+	//just for html
+	if char == "<!-- -->" {
+		if strings.HasPrefix(trimmedLine, "<!--") && strings.HasSuffix(trimmedLine, "-->") {
+			// Check for both `<!--` and `<!-- ` prefixes.
+			if strings.HasPrefix(trimmedLine, "<!--"+" ") {
+				line = strings.Replace(line, "<!-- ", "", 1)
+				line = strings.Replace(line, "<!--", "", 1)
+			}
+
+			// Check for both '-->' and ' -->' suffixes
+			if strings.HasSuffix(trimmedLine, " "+"-->") {
+				line = strings.Replace(line, " "+"-->", "", 1)
+				line = strings.Replace(line, "-->", "", 1)
+			}
+
+			return line
+		}
+	}
+
 	if strings.HasPrefix(trimmedLine, char) {
 		// Check for both `//` and `// ` prefixes.
 		if strings.HasPrefix(trimmedLine, char + " ") {
@@ -274,6 +298,15 @@ func Uncomment(line string, char string) string {
 
 func ToggleComments(line string, char string) string {
 	trimmedLine := strings.TrimSpace(line)
+
+	//just for html
+	if char == "<!-- -->" {
+		if strings.HasPrefix(trimmedLine, "<!--") && strings.HasSuffix(trimmedLine, "-->") {
+			return Uncomment(line, char)
+		}
+		return Comment(line, char)
+	}
+
 	if strings.HasPrefix(trimmedLine, char) {
 		return Uncomment(line, char)
 	} else {
@@ -335,6 +368,8 @@ func selectCommentChars(filename string) string {
 		commentChars = CommentChars["VHDL"]
 	case ".v", ".sv":
 		commentChars = CommentChars["Verilog"]
+	case ".html":
+		commentChars = CommentChars["HTML"]
 	default:
 		fmt.Printf("unsupported file extension: %s", extension)
 		os.Exit(1)
@@ -368,4 +403,5 @@ var CommentChars = map[string]string{
 	"TS" : "//",
 	"VHDL" : "--",
 	"Verilog" : "//",
+	"HTML":        "<!-- -->",
 }
