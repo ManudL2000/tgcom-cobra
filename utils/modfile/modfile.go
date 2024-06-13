@@ -29,22 +29,21 @@ type Config struct {
 
 giusti
 */
-func setModFunc(action string) func(string, string) string {
+func setModFunc(action string) (func(string, string) string, error) {
 	switch action {
 	case "comment":
-		return commenter.Comment
+		return commenter.Comment, nil
 	case "uncomment":
-		return commenter.Uncomment
+		return commenter.Uncomment, nil
 	case "toggle":
-		return commenter.ToggleComments
+		return commenter.ToggleComments, nil
 	case "":
 		// If no action provided, assume toggle
-		return commenter.ToggleComments
+		return commenter.ToggleComments, nil
 	default:
-		fmt.Println("Invalid action. Please provide 'comment', 'uncomment', or 'toggle'.")
-		os.Exit(1)
+		return nil, fmt.Errorf("invalid action. Please provide 'comment', 'uncomment', or 'toggle'")
+
 	}
-	return nil
 }
 
 /* This function is a copy of the previuous function but you use StartLabel and EndLabel instead of line as a string */
@@ -58,9 +57,21 @@ func ChangeFile(conf Config) {
 	// Ensure file is closed at the end
 	defer file.Close()
 
-	char, _ := selectCommentChars(conf.Filename, conf.Lang)
-	modFunc := setModFunc(conf.Action)
-	lines := findLines(conf.LineNum)
+	char, err := selectCommentChars(conf.Filename, conf.Lang)
+	if err != nil {
+		log.Fatal(err)
+	}
+	modFunc, err := setModFunc(conf.Action)
+	if err != nil {
+		log.Fatal(err)
+	}
+	lines := [2]int{0, 0}
+	if conf.LineNum != "" {
+		lines, err = findLines(conf.LineNum)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	if conf.DryRun {
 		err := printChanges(file, lines, conf.StartLabel, conf.EndLabel, char, modFunc)
 		if err != nil {
@@ -69,7 +80,9 @@ func ChangeFile(conf Config) {
 	} else {
 		// Create a backup of the original file
 		backupFilename := conf.Filename + ".bak"
-		createBackup(conf.Filename, backupFilename)
+		if err := createBackup(conf.Filename, backupFilename); err != nil {
+			log.Fatal(err)
+		}
 
 		// Create a temporary file
 		tmpFilename := conf.Filename + ".tmp"
@@ -138,7 +151,6 @@ func writeChanges(inputFile *os.File, outputFile *os.File, lineNum [2]int, start
 
 	for scanner.Scan() {
 		lineContent := scanner.Text()
-
 		if strings.Contains(lineContent, endLabel) {
 			inSection = false
 		}
@@ -201,23 +213,25 @@ func printChanges(inputFile *os.File, lineNum [2]int, startLabel, endLabel, comm
 	return scanner.Err()
 }
 
-func createBackup(filename, backupFilename string) {
+func createBackup(filename, backupFilename string) error {
 	inputFile, err := os.Open(filename)
 	if err != nil {
-		log.Fatalf("Errore: %v", err)
+		return err
 	}
 	defer inputFile.Close()
 
 	backupFile, err := os.Create(backupFilename)
 	if err != nil {
-		log.Fatalf("Errore: %v", err)
+		return err
 	}
 	defer backupFile.Close()
 
 	_, err = io.Copy(backupFile, inputFile)
 	if err != nil {
-		log.Fatalf("Errore: %v", err)
+		return err
 	}
+
+	return nil
 }
 
 func restoreBackup(filename, backupFilename string) {
@@ -227,28 +241,28 @@ func restoreBackup(filename, backupFilename string) {
 	os.Rename(backupFilename, filename)
 }
 
-func findLines(lineStr string) [2]int {
+func findLines(lineStr string) ([2]int, error) {
 	if strings.Contains(lineStr, "-") {
 		parts := strings.Split(lineStr, "-")
 		if len(parts) != 2 {
-			log.Fatalf("invalid range format. Use 'start-end'")
+			return [2]int{0, 0}, fmt.Errorf("invalid range format. Use 'start-end'")
 		}
 		startLine, err := strconv.Atoi(parts[0])
 		if err != nil || startLine <= 0 {
-			log.Fatalf("invalid start line number")
+			return [2]int{0, 0}, fmt.Errorf("invalid start line number")
 		}
 		endLine, err := strconv.Atoi(parts[1])
 		if err != nil || endLine < startLine {
-			log.Fatalf("invalid end line number")
+			return [2]int{0, 0}, fmt.Errorf("invalid end line number")
 		}
-		return [2]int{startLine, endLine}
+		return [2]int{startLine, endLine}, nil
 	} else {
 		startLine, err := strconv.Atoi(lineStr)
 		if err != nil || startLine <= 0 {
-			log.Fatalf("please provide a valid positive integer for the line number or a range")
+			return [2]int{0, 0}, fmt.Errorf("please provide a valid positive integer for the line number or a range")
 		}
 		endLine := startLine
-		return [2]int{startLine, endLine}
+		return [2]int{startLine, endLine}, nil
 	}
 }
 
