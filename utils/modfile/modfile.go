@@ -46,16 +46,24 @@ func setModFunc(action string) (func(string, string) string, error) {
 	}
 }
 
-/* This function is a copy of the previuous function but you use StartLabel and EndLabel instead of line as a string */
+// This function process the input
 func ChangeFile(conf Config) {
+	var file *os.File
+	var err error
+	var isStdin bool
 
-	// Open the file
-	file, err := os.Open(conf.Filename)
-	if err != nil {
-		log.Fatalf("failed to open file: %s", err)
+	if conf.Filename == "" {
+		// Read from stdin
+		file = os.Stdin
+		isStdin = true
+	} else {
+		// Open the file
+		file, err = os.Open(conf.Filename)
+		if err != nil {
+			log.Fatalf("failed to open file: %s", err)
+		}
+		defer file.Close()
 	}
-	// Ensure file is closed at the end
-	defer file.Close()
 
 	char, err := selectCommentChars(conf.Filename, conf.Lang)
 	if err != nil {
@@ -78,60 +86,65 @@ func ChangeFile(conf Config) {
 			log.Fatalf("failed to process the file: %s", err)
 		}
 	} else {
-		// Create a backup of the original file
-		backupFilename := conf.Filename + ".bak"
-		if err := createBackup(conf.Filename, backupFilename); err != nil {
-			log.Fatal(err)
+		if isStdin {
+			err := printOutput(file, lines, conf.StartLabel, conf.EndLabel, char, modFunc)
+			if err != nil {
+				log.Fatalf("failed to process the file: %s", err)
+			}
+		} else {
+			// Create a backup of the original file
+			backupFilename := conf.Filename + ".bak"
+			if err := createBackup(conf.Filename, backupFilename); err != nil {
+				log.Fatal(err)
+			}
+
+			// Create a temporary file
+			tmpFilename := conf.Filename + ".tmp"
+			tmpFile, err := os.Create(tmpFilename)
+			if err != nil {
+				restoreBackup(conf.Filename, backupFilename)
+				log.Fatalf("Errore: %v", err)
+			}
+			defer tmpFile.Close()
+
+			_, err = file.Seek(0, io.SeekStart)
+			if err != nil {
+				restoreBackup(conf.Filename, backupFilename)
+				tmpFile.Close()
+				os.Remove(tmpFilename)
+				log.Fatalf("Errore: %v", err)
+			}
+
+			err = writeChanges(file, tmpFile, lines, conf.StartLabel, conf.EndLabel, char, modFunc)
+			if err != nil {
+				restoreBackup(conf.Filename, backupFilename)
+				tmpFile.Close()
+				os.Remove(tmpFilename)
+				log.Fatalf("Errore: %v", err)
+			}
+
+			if err := file.Close(); err != nil {
+				restoreBackup(conf.Filename, backupFilename)
+				tmpFile.Close()
+				os.Remove(tmpFilename)
+				log.Fatalf("Errore: %v", err)
+			}
+
+			// Close the temporary file before renaming
+			if err := tmpFile.Close(); err != nil {
+				os.Remove(tmpFilename)
+				log.Fatalf("Errore: %v", err)
+			}
+
+			// Rename temporary file to original file
+			if err := os.Rename(tmpFilename, conf.Filename); err != nil {
+				restoreBackup(conf.Filename, backupFilename)
+				log.Fatalf("Errore: %v", err)
+			}
+
+			// Remove backup file after successful processing
+			os.Remove(backupFilename)
 		}
-
-		// Create a temporary file
-		tmpFilename := conf.Filename + ".tmp"
-		tmpFile, err := os.Create(tmpFilename)
-		if err != nil {
-			restoreBackup(conf.Filename, backupFilename)
-			log.Fatalf("Errore: %v", err)
-		}
-		defer tmpFile.Close()
-
-		_, err = file.Seek(0, io.SeekStart)
-
-		if err != nil {
-			restoreBackup(conf.Filename, backupFilename)
-			tmpFile.Close()
-			os.Remove(tmpFilename)
-			log.Fatalf("Errore: %v", err)
-		}
-
-		err = writeChanges(file, tmpFile, lines, conf.StartLabel, conf.EndLabel, char, modFunc)
-
-		if err != nil {
-			restoreBackup(conf.Filename, backupFilename)
-			tmpFile.Close()
-			os.Remove(tmpFilename)
-			log.Fatalf("Errore: %v", err)
-		}
-
-		if err := file.Close(); err != nil {
-			restoreBackup(conf.Filename, backupFilename)
-			tmpFile.Close()
-			os.Remove(tmpFilename)
-			log.Fatalf("Errore: %v", err)
-		}
-
-		// Close the temporary file before renaming
-		if err := tmpFile.Close(); err != nil {
-			os.Remove(tmpFilename)
-			log.Fatalf("Errore: %v", err)
-		}
-
-		// Rename temporary file to original file
-		if err := os.Rename(tmpFilename, conf.Filename); err != nil {
-			restoreBackup(conf.Filename, backupFilename)
-			log.Fatalf("Errore: %v", err)
-		}
-
-		// Remove backup file after successful processing
-		os.Remove(backupFilename)
 	}
 }
 
@@ -203,6 +216,38 @@ func printChanges(inputFile *os.File, lineNum [2]int, startLabel, endLabel, comm
 			inSection = true
 		}
 
+		currentLine++
+	}
+
+	if lineNum[1] > currentLine && startLabel == "" && endLabel == "" {
+		return errors.New("line number is out of range")
+	}
+
+	return scanner.Err()
+}
+
+func printOutput(input *os.File, lineNum [2]int, startLabel, endLabel, commentChars string, modFunc func(string, string) string) error {
+	scanner := bufio.NewScanner(input)
+	currentLine := 1
+	inSection := false
+
+	for scanner.Scan() {
+
+		lineContent := scanner.Text()
+
+		if strings.Contains(lineContent, endLabel) {
+			inSection = false
+		}
+
+		if shouldProcessLine(currentLine, lineNum, startLabel, endLabel, inSection) {
+			lineContent = modFunc(lineContent, commentChars)
+
+		}
+
+		if strings.Contains(lineContent, startLabel) {
+			inSection = true
+		}
+		fmt.Println(lineContent)
 		currentLine++
 	}
 

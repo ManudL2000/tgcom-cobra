@@ -277,6 +277,52 @@ func TestChangeFile(t *testing.T) {
 			t.Errorf("Dry run log does not match.\nExpected: %s\nGot: %s", expected, got)
 		}
 	})
+	t.Run("Stdin", func(t *testing.T) {
+		input := "line 1\nline 2\nline 3\nline 4\n"
+		conf := Config{
+			Filename:   "",
+			LineNum:    "1-3",
+			StartLabel: "",
+			EndLabel:   "",
+			Lang:       "GoLang",
+			Action:     "comment",
+			DryRun:     false,
+		}
+
+		// Create pipes for stdin and stdout redirection
+		rStdin, wStdin, _ := os.Pipe()
+		rStdout, wStdout, _ := os.Pipe()
+
+		// Write the mock input to the writer end of the stdin pipe
+		go func() {
+			defer wStdin.Close()
+			_, _ = wStdin.Write([]byte(input))
+		}()
+
+		// Save original stdin and stdout
+		oldStdin := os.Stdin
+		defer func() { os.Stdin = oldStdin }()
+		oldStdout := os.Stdout
+		defer func() { os.Stdout = oldStdout }()
+
+		// Redirect stdin and stdout
+		os.Stdin = rStdin
+		os.Stdout = wStdout
+
+		ChangeFile(conf)
+
+		wStdout.Close()
+		var buf bytes.Buffer
+		io.Copy(&buf, rStdout)
+		rStdout.Close()
+
+		// Check the output
+		got := buf.String()
+		expected := "// line 1\n// line 2\n// line 3\nline 4\n"
+		if got != expected {
+			t.Errorf("expected %q, got %q", expected, got)
+		}
+	})
 
 }
 
