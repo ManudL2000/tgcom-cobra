@@ -68,12 +68,13 @@ func init() {
 	rootCmd.SetHelpFunc(customHelpFunc)
 	rootCmd.SetUsageFunc(customUsageFunc)
 
-	rootCmd.PersistentFlags().StringVarP(&FileToRead, "file", "f", "", "pass argument to the flag and will print file content")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.LineNum, "line", "l", "", "pass argument to line flag and will print the line specified")
+	rootCmd.PersistentFlags().StringVarP(&FileToRead, "file", "f", "", "pass argument to the flag and will modify the file content")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.LineNum, "line", "n", "", "pass argument to line flag and will modify the line in the specified range")
 	rootCmd.PersistentFlags().BoolVarP(&inputFlag.DryRun, "dry-run", "d", false, "pass argument to dry-run flag and will print the result")
 	rootCmd.PersistentFlags().StringVarP(&inputFlag.Action, "action", "a", "toggle", "pass argument to action to comment/uncomment/toggle some lines")
 	rootCmd.PersistentFlags().StringVarP(&inputFlag.StartLabel, "start-label", "s", "", "pass argument to start-label to modify lines after start-label")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.EndLabel, "end-label", "e", "", "pass argument to end-label to modify lines after end-label")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.EndLabel, "end-label", "e", "", "pass argument to end-label to modify lines up to end-label")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.Lang, "language", "l", "", "pass argument to language to specify the language of the input code")
 }
 
 /* function to see if no flag is given */
