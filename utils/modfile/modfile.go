@@ -329,6 +329,8 @@ func selectCommentChars(filename, lang string) (string, error) {
 			return CommentChars["vhdl"], nil
 		case ".v", ".sv":
 			return CommentChars["verilog"], nil
+		case ".html":
+			return CommentChars["html"], nil
 		default:
 			return "", fmt.Errorf("unsupported file extension: %s", extension)
 		}
@@ -365,4 +367,5 @@ var CommentChars = map[string]string{
 	"ts":          "//",
 	"vhdl":        "--",
 	"verilog":     "//",
+	"html":        "<!-- -->",
 }
