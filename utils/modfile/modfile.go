@@ -24,6 +24,17 @@ type Config struct {
 	DryRun     bool
 }
 
+type Track struct {
+	File     bool
+	Line     bool
+	Start    bool
+	End      bool
+	Language bool
+	Action   bool
+	Dryrun   bool
+	Stdin    bool
+}
+
 /*
 	phylosophy: gli input a queste funzioni devono essere tutti giusti! è nel file della flag che controlli se gli argumment delle flag sono
 
@@ -46,11 +57,11 @@ func setModFunc(action string) (func(string, string) string, error) {
 	}
 }
 
-// This function process the input
+// This function process the input is able to modify one file at time
 func ChangeFile(conf Config) {
 	var file *os.File
 	var err error
-	var isStdin bool
+	var isStdin = false
 
 	if conf.Filename == "" {
 		// Read from stdin
@@ -65,14 +76,21 @@ func ChangeFile(conf Config) {
 		defer file.Close()
 	}
 
+	// Extract the comment character looking at the file name of at the language specified
 	char, err := selectCommentChars(conf.Filename, conf.Lang)
+
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Extract the function Comment, Uncomment or Toggle according to flag action
 	modFunc, err := setModFunc(conf.Action)
+
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// If given extract the lines
 	lines := [2]int{0, 0}
 	if conf.LineNum != "" {
 		lines, err = findLines(conf.LineNum)
@@ -80,6 +98,8 @@ func ChangeFile(conf Config) {
 			log.Fatal(err)
 		}
 	}
+
+	// If DryRun then print changes
 	if conf.DryRun {
 		err := printChanges(file, lines, conf.StartLabel, conf.EndLabel, char, modFunc)
 		if err != nil {
