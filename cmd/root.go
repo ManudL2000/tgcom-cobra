@@ -60,7 +60,7 @@ func init() {
 	rootCmd.SetHelpFunc(customHelpFunc)
 	rootCmd.SetUsageFunc(customUsageFunc)
 
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.Filename, "file", "f", "", "pass argument to the flag and will modify the file content")
+	rootCmd.PersistentFlags().StringVarP(&FileToRead, "file", "f", "", "pass argument to the flag and will modify the file content")
 	rootCmd.PersistentFlags().StringVarP(&inputFlag.LineNum, "line", "l", "", "pass argument to line flag and will modify the line in the specified range")
 	rootCmd.PersistentFlags().BoolVarP(&inputFlag.DryRun, "dry-run", "d", false, "pass argument to dry-run flag and will print the result")
 	rootCmd.PersistentFlags().StringVarP(&inputFlag.Action, "action", "a", "toggle", "pass argument to action to comment/uncomment/toggle some lines")
@@ -92,7 +92,7 @@ of -f and -l flags. */
 /* TODO: make this function more pretty */
 
 func ReadFlags(cmd *cobra.Command) {
-	if strings.Contains(inputFlag.Filename, ",") {
+	if strings.Contains(FileToRead, ",") {
 		if cmd.Flags().Changed("line") {
 			fmt.Println("Warning: when passed multiple file to flag -f don't use -l flag")
 		}
@@ -165,7 +165,11 @@ func customUsageFunc(cmd *cobra.Command) error {
 	fmt.Println()
 	fmt.Println("Flags:")
 	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-		fmt.Printf("  -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+		if flag.Name == "action" {
+			fmt.Printf("  -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+		} else {
+			fmt.Printf("  -%s, --%s: %s\n", flag.Shorthand, flag.Name, flag.Usage)
+		}
 	})
 	return nil
 }
