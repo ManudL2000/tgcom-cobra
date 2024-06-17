@@ -22,13 +22,10 @@ is a longer description of the command, Run is the action that must be executed 
 */
 var rootCmd = &cobra.Command{
 	Use:   "tgcom",
-	Short: "tgcom is a version of the tool that uses the cobra-cli toolkit",
-	Long: `A longer description that spans multiple lines and likely contains
-    examples and usage of using your application. For example:
-
-    tgcom is a CLI library written in Go that allows users to
+	Short: "tgcom is tool that allows users to comment or uncomment pieces of code",
+	Long: `tgcom is a CLI library written in Go that allows users to
     comment or uncomment pieces of code. It supports many different
-    languages including Go, C, Java, Python, Bash, and many others....`,
+    languages including Go, C, Java, Python, Bash, and many others...`,
 
 	Run: func(cmd *cobra.Command, args []string) {
 		if noFlagsGiven(cmd) {
@@ -59,16 +56,23 @@ func Execute() {
 subtgcom, the flag defined for tgcom can be used as flags of subtgcom) or local (so flags are usable only for tgcom command)
 */
 func init() {
+
 	rootCmd.SetHelpFunc(customHelpFunc)
 	rootCmd.SetUsageFunc(customUsageFunc)
 
-	rootCmd.PersistentFlags().StringVarP(&FileToRead, "file", "f", "", "File to modify")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.LineNum, "line", "l", "", "Line or range of lines to modify")
-	rootCmd.PersistentFlags().BoolVarP(&inputFlag.DryRun, "dry-run", "d", false, "Print the result without modifying the file")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.Action, "action", "a", "toggle", "Action to perform (comment, uncomment, toggle)")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.StartLabel, "start-label", "s", "", "Modify lines after start-label")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.EndLabel, "end-label", "e", "", "Modify lines up to end-label")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.Lang, "language", "L", "", "Specify the language of the input code")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.Filename, "file", "f", "", "pass argument to the flag and will modify the file content")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.LineNum, "line", "l", "", "pass argument to line flag and will modify the line in the specified range")
+	rootCmd.PersistentFlags().BoolVarP(&inputFlag.DryRun, "dry-run", "d", false, "pass argument to dry-run flag and will print the result")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.Action, "action", "a", "toggle", "pass argument to action to comment/uncomment/toggle some lines")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.StartLabel, "start-label", "s", "", "pass argument to start-label to modify lines after start-label")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.EndLabel, "end-label", "e", "", "pass argument to end-label to modify lines up to end-label")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.Lang, "language", "L", "", "pass argument to language to specify the language of the input code")
+	rootCmd.MarkFlagsRequiredTogether("start-label", "end-label")
+	rootCmd.MarkFlagsMutuallyExclusive("line", "start-label")
+	rootCmd.MarkFlagsMutuallyExclusive("line", "end-label")
+	rootCmd.MarkFlagsOneRequired("file", "language")
+	rootCmd.MarkFlagsMutuallyExclusive("file", "language")
+
 }
 
 /* function to see if no flag is given */
@@ -107,14 +111,14 @@ func ReadFlags(cmd *cobra.Command) {
 				if strings.Contains(fileInfo[i], ":") {
 					parts := strings.Split(fileInfo[i], ":")
 					if len(parts) != 2 {
-						log.Fatalf("invalid syntax. Use 'FileToRead:lines'")
+						log.Fatalf("invalid syntax. Use 'File:lines'")
 					}
 					inputFlag.Filename = parts[0]
 					inputFlag.LineNum = parts[1]
 					modfile.ChangeFile(inputFlag)
 				} else {
 					// HERE: insert code to say that is possible that start-end labels have been given
-					log.Fatalf("invalid syntax. Use 'FileToRead:lines'")
+					log.Fatalf("invalid syntax. Use 'File:lines'")
 				}
 			}
 		}
@@ -139,15 +143,19 @@ func customHelpFunc(cmd *cobra.Command, args []string) {
 	fmt.Println()
 	fmt.Println("Flags:")
 	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-		fmt.Printf("  -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+		if flag.Name == "action" {
+			fmt.Printf("  -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+		} else {
+			fmt.Printf("  -%s, --%s: %s\n", flag.Shorthand, flag.Name, flag.Usage)
+		}
 	})
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  # Toggle comments on lines 1-5 in example.txt")
-	fmt.Println("  tgcom -f example.txt -n 1-5 -a toggle")
+	fmt.Println("  tgcom -f example.go -l 1-5 -a toggle")
 	fmt.Println()
 	fmt.Println("  # Dry run: show the changes without modifying the file")
-	fmt.Println("  tgcom -f example.txt -n 1-5 -a toggle -d")
+	fmt.Println("  tgcom -f example.html -s START -e END -a toggle -d")
 }
 
 func customUsageFunc(cmd *cobra.Command) error {
