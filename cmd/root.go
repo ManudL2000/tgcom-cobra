@@ -32,12 +32,6 @@ var rootCmd = &cobra.Command{
 			customUsageFunc(cmd)
 			os.Exit(1)
 		}
-
-		if !cmd.Flags().Changed("file") {
-			fmt.Println("Provide a valid file with the flag -f or pass it through the pipeline")
-			os.Exit(1)
-		}
-
 		ReadFlags(cmd)
 	},
 }
