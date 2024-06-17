@@ -130,7 +130,7 @@ func ReadFlags(cmd *cobra.Command) {
 func customHelpFunc(cmd *cobra.Command, args []string) {
 	fmt.Println("Tgcom CLI Application")
 	fmt.Println()
-	fmt.Println("Tgcom is a command-line tool designed to comment, uncomment, or toggle comments in various programming languages. It supports multiple options to modify code files efficiently.")
+	fmt.Println(cmd.Long)
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  tgcom [flags]")
@@ -153,7 +153,7 @@ func customHelpFunc(cmd *cobra.Command, args []string) {
 }
 
 func customUsageFunc(cmd *cobra.Command) error {
-	fmt.Printf("Custom Usage Message for command: %s\n", cmd.Name())
+	fmt.Println(cmd.Short)
 	fmt.Println("Usage:")
 	fmt.Printf("  %s\n", cmd.UseLine())
 	fmt.Println()
