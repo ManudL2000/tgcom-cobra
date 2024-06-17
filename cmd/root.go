@@ -21,30 +21,26 @@ var inputFlag modfile.Config
 is a longer description of the command, Run is the action that must be executed when command tgcom is called"
 */
 var rootCmd = &cobra.Command{
-	Use:   "ciaoo",
-	Short: "ciaoo is a verison of tgcom that uses cobra-cli toolkit",
+	Use:   "tgcom",
+	Short: "tgcom is a version of the tool that uses the cobra-cli toolkit",
 	Long: `A longer description that spans multiple lines and likely contains
     examples and usage of using your application. For example:
 
-	ciaoo is a CLI library written in Go that allows users to
-	comment or uncomment pieces of code. It support many different
-	languages including Go, C, Java, Python, Bash and many others....`,
+    tgcom is a CLI library written in Go that allows users to
+    comment or uncomment pieces of code. It supports many different
+    languages including Go, C, Java, Python, Bash, and many others....`,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		/* If user did not call any flag then print basic info of Usage function and exit */
 		if noFlagsGiven(cmd) {
 			customUsageFunc(cmd)
 			os.Exit(1)
 		}
 
-		/* Otherwise user need to pass something to flag -f. If this does not happen print an error
-		message and exit  */
 		if !cmd.Flags().Changed("file") {
 			fmt.Println("Provide a valid file with the flag -f or pass it through the pipeline")
 			os.Exit(1)
 		}
-		/* If some arguments have been passed to -f flag then process the arguments of the flag with
-		the following function */
+
 		ReadFlags(cmd)
 	},
 }
@@ -63,18 +59,16 @@ func Execute() {
 subtgcom, the flag defined for tgcom can be used as flags of subtgcom) or local (so flags are usable only for tgcom command)
 */
 func init() {
-	/* In the next 2 lines we modify the action to perform when -h (or --help) flag is called and we set the usage func
-	that in our case will be displayed in cases where we don't define arguments of flags or so on */
 	rootCmd.SetHelpFunc(customHelpFunc)
 	rootCmd.SetUsageFunc(customUsageFunc)
 
-	rootCmd.PersistentFlags().StringVarP(&FileToRead, "file", "f", "", "pass argument to the flag and will modify the file content")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.LineNum, "line", "n", "", "pass argument to line flag and will modify the line in the specified range")
-	rootCmd.PersistentFlags().BoolVarP(&inputFlag.DryRun, "dry-run", "d", false, "pass argument to dry-run flag and will print the result")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.Action, "action", "a", "toggle", "pass argument to action to comment/uncomment/toggle some lines")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.StartLabel, "start-label", "s", "", "pass argument to start-label to modify lines after start-label")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.EndLabel, "end-label", "e", "", "pass argument to end-label to modify lines up to end-label")
-	rootCmd.PersistentFlags().StringVarP(&inputFlag.Lang, "language", "l", "", "pass argument to language to specify the language of the input code")
+	rootCmd.PersistentFlags().StringVarP(&FileToRead, "file", "f", "", "File to modify")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.LineNum, "line", "l", "", "Line or range of lines to modify")
+	rootCmd.PersistentFlags().BoolVarP(&inputFlag.DryRun, "dry-run", "d", false, "Print the result without modifying the file")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.Action, "action", "a", "toggle", "Action to perform (comment, uncomment, toggle)")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.StartLabel, "start-label", "s", "", "Modify lines after start-label")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.EndLabel, "end-label", "e", "", "Modify lines up to end-label")
+	rootCmd.PersistentFlags().StringVarP(&inputFlag.Lang, "language", "L", "", "Specify the language of the input code")
 }
 
 /* function to see if no flag is given */
@@ -135,25 +129,25 @@ func ReadFlags(cmd *cobra.Command) {
 	}
 }
 
-/* the following function decide in which mode we add/remove comments: currently (12/06/2024) only two modes exists: passing lines */
-
 func customHelpFunc(cmd *cobra.Command, args []string) {
-	fmt.Println("Help Message for Tgcom application")
+	fmt.Println("Tgcom CLI Application")
+	fmt.Println()
+	fmt.Println("Tgcom is a command-line tool designed to comment, uncomment, or toggle comments in various programming languages. It supports multiple options to modify code files efficiently.")
 	fmt.Println()
 	fmt.Println("Usage:")
-	fmt.Println("  tgcom [-f][single file or multiple files with lines] [-l][single line or range of lines] [-d][dry run]")
-	fmt.Println()
-	fmt.Println("Available Commands:")
-	for _, c := range cmd.Commands() {
-		fmt.Printf("  %s - %s\n", c.Name(), c.Short)
-	}
+	fmt.Println("  tgcom [flags]")
 	fmt.Println()
 	fmt.Println("Flags:")
 	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-		fmt.Printf("  --%s: %s\n", flag.Name, flag.Usage)
+		fmt.Printf("  -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
 	})
 	fmt.Println()
-	fmt.Println("Use 'appname [command] --help' for more information about a command.")
+	fmt.Println("Examples:")
+	fmt.Println("  # Toggle comments on lines 1-5 in example.txt")
+	fmt.Println("  tgcom -f example.txt -n 1-5 -a toggle")
+	fmt.Println()
+	fmt.Println("  # Dry run: show the changes without modifying the file")
+	fmt.Println("  tgcom -f example.txt -n 1-5 -a toggle -d")
 }
 
 func customUsageFunc(cmd *cobra.Command) error {
@@ -163,7 +157,7 @@ func customUsageFunc(cmd *cobra.Command) error {
 	fmt.Println()
 	fmt.Println("Flags:")
 	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-		fmt.Printf("  --%s: %s\n", flag.Name, flag.Usage)
+		fmt.Printf("  -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
 	})
 	return nil
 }
