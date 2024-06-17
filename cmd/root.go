@@ -144,12 +144,17 @@ func customHelpFunc(cmd *cobra.Command, args []string) {
 		}
 	})
 	fmt.Println()
+	fmt.Println("Supported Languages:")
+	for lang := range modfile.CommentChars {
+		fmt.Println(lang)
+	}
+	fmt.Println()
 	fmt.Println("Examples:")
-	fmt.Println("  # Toggle comments on lines 1-5 in example.txt")
+	fmt.Println("  # Toggle comments on lines 1-5 in example.go")
 	fmt.Println("  tgcom -f example.go -l 1-5 -a toggle")
 	fmt.Println()
 	fmt.Println("  # Dry run: show the changes without modifying the file")
-	fmt.Println("  tgcom -f example.html -s START -e END -a toggle -d")
+	fmt.Println("  tgcom -f example.go -s START -e END -a toggle -d")
 }
 
 func customUsageFunc(cmd *cobra.Command) error {
